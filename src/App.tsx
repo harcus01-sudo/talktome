@@ -3,12 +3,14 @@ import Home from './components/Home';
 import ScenarioSelection from './components/ScenarioSelection';
 import Chat from './components/Chat';
 import Report from './components/Report';
+import CustomScenario from './components/CustomScenario';
+import HistoryList from './components/HistoryList';
 import { Scenario, Message, ReportData, PracticeRecord } from './types';
 
 import { SCENARIOS } from './constants';
 
 export default function App() {
-  const [currentPage, setCurrentPage] = useState<'home' | 'scenarios' | 'chat' | 'report'>('home');
+  const [currentPage, setCurrentPage] = useState<'home' | 'scenarios' | 'chat' | 'report' | 'custom_scenario' | 'history'>('home');
   const [selectedScenario, setSelectedScenario] = useState<Scenario | null>(null);
   const [chatHistory, setChatHistory] = useState<Message[]>([]);
   const [reportData, setReportData] = useState<ReportData | null>(null);
@@ -41,7 +43,7 @@ export default function App() {
     setHistory(prev => prev.filter(record => record.id !== id));
   };
 
-  const navigateTo = (page: 'home' | 'scenarios' | 'chat' | 'report') => {
+  const navigateTo = (page: 'home' | 'scenarios' | 'chat' | 'report' | 'custom_scenario' | 'history') => {
     setCurrentPage(page);
   };
 
@@ -95,6 +97,15 @@ export default function App() {
           />
         )}
         {currentPage === 'scenarios' && <ScenarioSelection onNavigate={navigateTo} onStartScenario={startScenario} />}
+        {currentPage === 'custom_scenario' && <CustomScenario onNavigate={navigateTo} onStartScenario={startScenario} />}
+        {currentPage === 'history' && (
+          <HistoryList 
+            onNavigate={navigateTo} 
+            history={history} 
+            onViewRecord={viewHistoryRecord} 
+            onDeleteRecord={deleteHistoryRecord} 
+          />
+        )}
         {currentPage === 'chat' && selectedScenario && (
           <Chat 
             scenario={selectedScenario} 

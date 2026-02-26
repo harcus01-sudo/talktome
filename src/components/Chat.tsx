@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ArrowLeft, Send, Mic, StopCircle, CheckCheck } from 'lucide-react';
+import { ArrowLeft, Send, Mic, StopCircle, CheckCheck, User } from 'lucide-react';
 import { Scenario, Message, ReportData } from '../types';
 import { generateChildResponse, generateReport } from '../services/geminiService';
 
@@ -17,7 +17,11 @@ export default function Chat({ scenario, chatHistory, setChatHistory, onNavigate
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+  const [endWarning, setEndWarning] = useState<'empty' | 'few' | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const userMessageCount = chatHistory.filter(m => m.role === 'user').length;
+  const isMaxMessagesReached = userMessageCount >= 10;
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -28,7 +32,7 @@ export default function Chat({ scenario, chatHistory, setChatHistory, onNavigate
   }, [chatHistory, isTyping]);
 
   const handleSend = async () => {
-    if (!inputText.trim()) return;
+    if (!inputText.trim() || isTyping || isMaxMessagesReached) return;
 
     const newUserMsg: Message = {
       id: Date.now().toString(),
@@ -60,22 +64,24 @@ export default function Chat({ scenario, chatHistory, setChatHistory, onNavigate
     }
   };
 
-  const handleEndChat = async () => {
+  const handleEndChat = () => {
     const userMessages = chatHistory.filter(m => m.role === 'user');
     const userMessageCount = userMessages.length;
 
-    console.log("Ending chat, user message count:", userMessageCount);
-
     if (userMessageCount === 0) {
-      window.alert("请先开始对话后再生成报告，以确保分析的有效性。");
+      setEndWarning('empty');
       return;
     }
 
     if (userMessageCount < 3) {
-      const confirmEnd = window.confirm("当前对话次数较少（少于3次），AI分析结果可能不够准确。是否坚持生成报告？");
-      if (!confirmEnd) return;
+      setEndWarning('few');
+      return;
     }
 
+    proceedWithEndChat();
+  };
+
+  const proceedWithEndChat = async () => {
     setIsGeneratingReport(true);
     try {
       const report = await generateReport(chatHistory.map(m => ({ role: m.role, text: m.text })));
@@ -112,6 +118,16 @@ export default function Chat({ scenario, chatHistory, setChatHistory, onNavigate
       </div>
 
       <main className="flex-1 overflow-y-auto p-4 flex flex-col gap-6">
+        <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 shadow-sm">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="material-symbols-outlined text-emerald-600 text-[18px]">{scenario.icon}</span>
+            <h3 className="font-bold text-emerald-800 text-sm">{scenario.title}</h3>
+          </div>
+          <p className="text-xs text-emerald-700 leading-relaxed whitespace-pre-wrap">
+            {scenario.description}
+          </p>
+        </div>
+
         <div className="flex justify-center">
           <span className="text-xs font-medium text-slate-400 bg-slate-100 px-3 py-1 rounded-full">
             今天 {new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
@@ -132,7 +148,7 @@ export default function Chat({ scenario, chatHistory, setChatHistory, onNavigate
               </div>
             ) : (
               <div className="w-10 h-10 shrink-0 flex items-center justify-center rounded-full bg-primary/20 text-primary-dark font-bold text-sm">
-                你
+                <User size={20} />
               </div>
             )}
             
@@ -183,13 +199,14 @@ export default function Chat({ scenario, chatHistory, setChatHistory, onNavigate
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-              className="w-full bg-transparent border-none p-0 text-slate-900 placeholder:text-slate-400 focus:ring-0 text-base outline-none" 
-              placeholder="输入你的回复..." 
+              disabled={isMaxMessagesReached || isTyping}
+              className="w-full bg-transparent border-none p-0 text-slate-900 placeholder:text-slate-400 focus:ring-0 text-base outline-none disabled:opacity-50 disabled:bg-transparent" 
+              placeholder={isMaxMessagesReached ? "已达到最大对话次数" : "输入你的回复..."} 
             />
           </div>
           <button 
             onClick={handleSend}
-            disabled={!inputText.trim() || isTyping || chatHistory.filter(m => m.role === 'user').length >= 10}
+            disabled={!inputText.trim() || isTyping || isMaxMessagesReached}
             className="flex-none w-10 h-10 flex items-center justify-center rounded-full bg-primary hover:bg-opacity-90 text-slate-900 transition-all shadow-sm disabled:opacity-50"
           >
             <Send size={18} className="ml-1" />
@@ -227,6 +244,62 @@ export default function Chat({ scenario, chatHistory, setChatHistory, onNavigate
           </button>
         </div>
       </footer>
+
+      {/* Custom Alert/Confirm Modal */}
+      <AnimatePresence>
+        {endWarning && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-xl"
+            >
+              <h3 className="text-lg font-bold text-slate-900 mb-2">
+                {endWarning === 'empty' ? '提示' : '确认结束对话？'}
+              </h3>
+              <p className="text-slate-600 text-sm mb-6 leading-relaxed">
+                {endWarning === 'empty' 
+                  ? '请先开始对话后再生成报告，以确保分析的有效性。' 
+                  : '当前对话次数较少（少于3次），AI分析结果可能不够准确。是否坚持生成报告？'}
+              </p>
+              <div className="flex gap-3">
+                {endWarning === 'empty' ? (
+                  <button 
+                    onClick={() => setEndWarning(null)}
+                    className="flex-1 bg-primary hover:bg-primary-dark text-slate-900 font-bold py-3.5 rounded-xl transition-colors"
+                  >
+                    知道了
+                  </button>
+                ) : (
+                  <>
+                    <button 
+                      onClick={() => setEndWarning(null)}
+                      className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3.5 rounded-xl transition-colors"
+                    >
+                      继续沟通
+                    </button>
+                    <button 
+                      onClick={() => {
+                        setEndWarning(null);
+                        proceedWithEndChat();
+                      }}
+                      className="flex-1 bg-primary hover:bg-primary-dark text-slate-900 font-bold py-3.5 rounded-xl transition-colors"
+                    >
+                      坚持生成
+                    </button>
+                  </>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

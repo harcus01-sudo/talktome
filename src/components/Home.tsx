@@ -8,7 +8,7 @@ import { PracticeRecord } from '../types';
 import { Calendar, Trash2 } from 'lucide-react';
 
 interface Props {
-  onNavigate: (page: 'home' | 'scenarios' | 'chat' | 'report') => void;
+  onNavigate: (page: 'home' | 'scenarios' | 'chat' | 'report' | 'custom_scenario' | 'history') => void;
   onStartScenario: (scenario: any) => void;
   history: PracticeRecord[];
   onViewRecord: (record: PracticeRecord) => void;
@@ -103,7 +103,10 @@ export default function Home({ onNavigate, onStartScenario, history, onViewRecor
             </div>
             <span className="text-base">场景练习</span>
           </button>
-          <button className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-900 font-bold text-lg py-4 px-3 rounded-2xl shadow-md border border-slate-200 transition-all duration-300 transform active:scale-[0.98] flex flex-col items-center justify-center gap-2 group h-28">
+          <button 
+            onClick={() => onNavigate('custom_scenario')}
+            className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-900 font-bold text-lg py-4 px-3 rounded-2xl shadow-md border border-slate-200 transition-all duration-300 transform active:scale-[0.98] flex flex-col items-center justify-center gap-2 group h-28"
+          >
             <div className="bg-slate-200 p-2 rounded-full">
               <Edit3 size={28} className="group-hover:rotate-12 transition-transform" />
             </div>
@@ -161,7 +164,12 @@ export default function Home({ onNavigate, onStartScenario, history, onViewRecor
                 </div>
               ))}
               {history.length > 3 && (
-                <button className="text-center text-sm text-primary font-bold py-2">查看全部</button>
+                <button 
+                  onClick={() => onNavigate('history')}
+                  className="text-center text-sm text-primary font-bold py-2 hover:underline"
+                >
+                  查看全部
+                </button>
               )}
             </div>
           ) : (
